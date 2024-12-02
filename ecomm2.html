@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MM TECH</title>
+    <link rel="stylesheet" href="ecomm2.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">
+            <h1>MM TECH</h1>
+        </div>
+        <nav>
+            <a href="#home">Home</a>
+            <a href="#shop">Shop</a>
+            <a href="#contact">Contact</a>
+        </nav>
+
+        <div class="search-container">
+            <input type="text" id="productSearch" placeholder="Search Products" oninput="applySearch()">
+        </div>
+
+        <div class="cart-container">
+            <button id="cartBtn" onclick="openCart()">Cart (0)</button>
+            <button id="wishlistBtn" onclick="openWishlist()">Wishlist (0)</button>
+        </div>
+
+        <div id="auth-container">
+            <button id="profile-btn" style="display: none;" onclick="logout()" class="auth-btn">Logout</button>
+            <span id="user-name" style="display: none;"></span>
+            <button id="login-btn" onclick="openLoginModal()" class="auth-btn">Login</button>
+            <button id="signup-btn" onclick="openSignupModal()" class="auth-btn">Sign Up</button>
+        </div>
+    </header>
+
+    <section>
+        <h2>&nbsp;Welcome to MM TECH</h2>
+    </section>
+
+    <div class="filter-sort-container">
+        <div class="filter-sort-item">
+            <label for="minPrice">Min Price:</label>
+            <input type="number" id="minPrice" placeholder="Min" oninput="applySortAndFilter()">
+        </div>
+
+        <div class="filter-sort-item">
+            <label for="maxPrice">Max Price:</label>
+            <input type="number" id="maxPrice" placeholder="Max" oninput="applySortAndFilter()">
+        </div>
+
+        <div class="filter-sort-item">
+            <label for="sortSelect">Sort By:</label>
+            <select id="sortSelect" onchange="applySortAndFilter()">
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="price-asc">Price (Low to High)</option>
+                <option value="price-desc">Price (High to Low)</option>
+            </select>
+        </div>
+    </div>
+
+    <section id="shop" class="product-container">
+    </section>
+
+    <div id="cartModal" class="modal">
+        <div class="modal-content">
+            <h2>Your Cart</h2>
+            <ul id="cartItemsList"></ul>
+            <p id="cartTotal"></p>
+            <button onclick="checkout()">Proceed to Checkout</button>
+            <button onclick="closeCart()">Close</button>
+        </div>
+    </div>
+
+    <div id="wishlistModal" class="modal">
+        <div class="modal-content">
+            <h2>Your Wishlist</h2>
+            <ul id="wishlistItemsList"></ul>
+            <button onclick="closeWishlist()">Close</button>
+        </div>
+    </div>
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content auth-modal">
+            <h2>Login</h2>
+            <input type="text" id="loginUsername" placeholder="Username">
+            <input type="password" id="loginPassword" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <button onclick="closeLoginModal()">Close</button>
+        </div>
+    </div>
+
+    <div id="signupModal" class="modal">
+        <div class="modal-content auth-modal">
+            <h2>Sign Up</h2>
+            <input type="text" id="signupUsername" placeholder="Username">
+            <input type="password" id="signupPassword" placeholder="Password">
+            <button onclick="signup()">Sign Up</button>
+            <button onclick="closeSignupModal()">Close</button>
+        </div>
+    </div>
+
+    <footer id="contact">
+        <h3>Contact Us</h3>
+        <p>MM TECH Inc.</p>
+        <p>Email: support@MMTECH.com</p>
+        <p>Phone: +961 12 345 678</p>
+        <p>Address: 123 Street</p>
+        <p>&copy; 2024 MM TECH. All rights reserved.</p>
+    </footer>
+
+    <script>
+        let cart = [];
+        let wishlist = [];
+        let currentUser = null;
+
+        const products = [
+            { name: "Keyboard", price: 9.99, image: "img/keyboard.jpg" },
+            { name: "Mouse", price: 19.99, image: "img/mouse.jpg" },
+            { name: "Computer", price: 29.99, image: "img/computer.jpg" },
+            { name: "Monitor", price: 39.99, image: "img/monitor.jpg" },
+            { name: "Laptop", price: 49.99, image: "img/laptop.jpg" },
+            { name: "Headset", price: 59.99, image: "img/headset.jpg" },
+            { name: "Smartphone", price: 69.99, image: "img/smartphone.jpg" },
+            { name: "TV", price: 79.99, image: "img/tv.jpg" }
+        ];
+
+        function displayProducts(filteredProducts) {
+            const container = document.getElementById('shop');
+            container.innerHTML = "";
+
+            filteredProducts.forEach(product => {
+                const productElement = document.createElement('div');
+                productElement.classList.add('product');
+                productElement.innerHTML = `
+            <img src="${product.image}" alt="${product.name}">
+            <h3>${product.name}</h3>
+            <p>$${product.price}</p>
+            <button onclick="addToCart('${product.name}', ${product.price})">Add to Cart</button>
+            <button onclick="addToWishlist('${product.name}', ${product.price})">Add to Wishlist</button>
+        `;
+                container.appendChild(productElement);
+            });
+        }
+
+        function applySortAndFilter() {
+            const minPrice = parseFloat(document.getElementById('minPrice').value) || 0;
+            const maxPrice = parseFloat(document.getElementById('maxPrice').value) || Infinity;
+            const sortBy = document.getElementById('sortSelect').value;
+
+            let filteredProducts = products.filter(product =>
+                product.price >= minPrice && product.price <= maxPrice
+            );
+
+            if (sortBy === 'name-asc') {
+                filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (sortBy === 'name-desc') {
+                filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
+            } else if (sortBy === 'price-asc') {
+                filteredProducts.sort((a, b) => a.price - b.price);
+            } else if (sortBy === 'price-desc') {
+                filteredProducts.sort((a, b) => b.price - a.price);
+            }
+
+            displayProducts(filteredProducts);
+        }
+
+        function applySearch() {
+            const searchQuery = document.getElementById('productSearch').value.toLowerCase();
+
+            let filteredProducts = products.filter(product =>
+                product.name.toLowerCase().includes(searchQuery)
+            );
+
+            displayProducts(filteredProducts);
+        }
+
+        function addToCart(productName, productPrice) {
+            if (!currentUser) {
+                alert("Please log in to add products to your cart.");
+                return;
+            }
+
+            const existingProduct = cart.find(item => item.name === productName);
+            if (existingProduct) {
+                existingProduct.quantity++;
+            } else {
+                const newProduct = { name: productName, price: productPrice, quantity: 1 };
+                cart.push(newProduct);
+            }
+
+            updateCartButton();
+            renderCart();
+        }
+
+        function addToWishlist(productName, productPrice) {
+            if (!currentUser) {
+                alert("Please log in to add products to your wishlist.");
+                return;
+            }
+
+            const existingProduct = wishlist.find(item => item.name === productName);
+            if (!existingProduct) {
+                const newProduct = { name: productName, price: productPrice };
+                wishlist.push(newProduct);
+            }
+
+            updateWishlistButton();
+        }
+
+        function removeFromCart(productName) {
+            cart = cart.filter(item => item.name !== productName);
+            updateCartButton();
+            renderCart();
+
+            alert(`${productName} has been removed from your cart.`);
+        }
+
+        function removeFromWishlist(productName) {
+            wishlist = wishlist.filter(item => item.name !== productName);
+            updateWishlistButton();
+            renderWishlist();
+
+            alert(`${productName} has been removed from your wishlist.`);
+        }
+
+        function changeItemQuantity(productName, newQuantity) {
+            const product = cart.find(item => item.name === productName);
+            if (product && newQuantity > 0) {
+                product.quantity = newQuantity;
+                updateCartButton();
+                renderCart();
+            } else if (newQuantity <= 0) {
+                removeFromCart(productName);
+            }
+        }
+
+        function updateCartButton() {
+            const cartBtn = document.getElementById('cartBtn');
+            const totalQuantity = cart.reduce((total, item) => total + item.quantity, 0);
+            cartBtn.textContent = `Cart (${totalQuantity})`;
+        }
+
+        function updateWishlistButton() {
+            const wishlistBtn = document.getElementById('wishlistBtn');
+            wishlistBtn.textContent = `Wishlist (${wishlist.length})`;
+        }
+
+        function openCart() {
+            if (!currentUser) {
+                alert("Please log in to view your cart.");
+                return;
+            }
+
+            const cartModal = document.getElementById('cartModal');
+            const cartItemsList = document.getElementById('cartItemsList');
+            const cartTotal = document.getElementById('cartTotal');
+
+            cartItemsList.innerHTML = "";
+            let total = 0;
+            cart.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.name} - $${item.price} x ${item.quantity}`;
+
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'number';
+                quantityInput.value = item.quantity;
+                quantityInput.min = 1;
+                quantityInput.addEventListener('input', function () {
+                    changeItemQuantity(item.name, parseInt(quantityInput.value));
+                });
+
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.onclick = function () {
+                    removeFromCart(item.name);
+                };
+
+                li.appendChild(quantityInput);
+                li.appendChild(removeBtn);
+                cartItemsList.appendChild(li);
+                total += item.price * item.quantity;
+            });
+
+            cartTotal.textContent = `Total: $${total.toFixed(2)}`;
+            cartModal.style.display = 'flex';
+        }
+
+        function closeCart() {
+            const cartModal = document.getElementById('cartModal');
+            cartModal.style.display = 'none';
+        }
+
+        function openWishlist() {
+            if (!currentUser) {
+                alert("Please log in to view your wishlist.");
+                return;
+            }
+
+            const wishlistModal = document.getElementById('wishlistModal');
+            const wishlistItemsList = document.getElementById('wishlistItemsList');
+
+            wishlistItemsList.innerHTML = "";
+
+            wishlist.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item.name;
+
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.onclick = function () {
+                    removeFromWishlist(item.name);
+                };
+
+                li.appendChild(removeBtn);
+                wishlistItemsList.appendChild(li);
+            });
+
+            wishlistModal.style.display = 'flex';
+        }
+
+        function closeWishlist() {
+            const wishlistModal = document.getElementById('wishlistModal');
+            wishlistModal.style.display = 'none';
+        }
+
+        function openLoginModal() {
+            const loginModal = document.getElementById('loginModal');
+            loginModal.style.display = 'flex';
+        }
+
+        function closeLoginModal() {
+            const loginModal = document.getElementById('loginModal');
+            loginModal.style.display = 'none';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+        }
+
+        function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (username && password) {
+                currentUser = { username };
+                alert(`Welcome, ${username}!`);
+                closeLoginModal();
+                updateAuthDisplay();
+            } else {
+                alert("Please enter both username and password.");
+            }
+        }
+
+        function signup() {
+            const username = document.getElementById("signupUsername").value;
+            const password = document.getElementById("signupPassword").value;
+
+            if (username && password) {
+                alert(`User ${username} signed up successfully!`);
+                currentUser = { username };
+                updateAuthDisplay();
+                closeSignupModal();
+            } else {
+                alert("Please fill in both username and password!");
+            }
+        }
+
+        function openSignupModal() {
+            document.getElementById("signupModal").style.display = "flex";
+        }
+
+        function closeSignupModal() {
+            document.getElementById("signupModal").style.display = "none";
+            document.getElementById('signupUsername').value = '';
+            document.getElementById('signupPassword').value = '';
+        }
+
+        function logout() {
+            currentUser = null;
+            alert("You have logged out.");
+            updateAuthDisplay();
+        }
+
+        function updateAuthDisplay() {
+            const profileBtn = document.getElementById('profile-btn');
+            const userNameSpan = document.getElementById('user-name');
+            const loginBtn = document.getElementById('login-btn');
+            const signupBtn = document.getElementById('signup-btn');
+
+            if (currentUser) {
+                profileBtn.style.display = 'inline-block';
+                userNameSpan.style.display = 'inline-block';
+                const firstName = currentUser.username.split(' ')[0];
+                userNameSpan.textContent = `Hello, ${firstName}`;
+                loginBtn.style.display = 'none';
+                signupBtn.style.display = 'none';
+            } else {
+                profileBtn.style.display = 'none';
+                userNameSpan.style.display = 'none';
+                loginBtn.style.display = 'inline-block';
+                signupBtn.style.display = 'inline-block';
+            }
+        }
+
+        displayProducts(products);
+
+        window.onload = function () {
+            applySortAndFilter();
+            updateAuthDisplay();
+        };
+
+        function renderCart() {
+            const cartItemsList = document.getElementById('cartItemsList');
+            cartItemsList.innerHTML = "";
+            let total = 0;
+
+            cart.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.name} - $${item.price} x ${item.quantity}`;
+
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'number';
+                quantityInput.value = item.quantity;
+                quantityInput.min = 1;
+                quantityInput.addEventListener('input', function () {
+                    changeItemQuantity(item.name, parseInt(quantityInput.value));
+                });
+
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.onclick = function () {
+                    removeFromCart(item.name);
+                };
+
+                li.appendChild(quantityInput);
+                li.appendChild(removeBtn);
+                cartItemsList.appendChild(li);
+                total += item.price * item.quantity;
+            });
+
+            document.getElementById('cartTotal').textContent = `Total: $${total.toFixed(2)}`;
+        }
+
+        function renderWishlist() {
+            const wishlistItemsList = document.getElementById('wishlistItemsList');
+            wishlistItemsList.innerHTML = "";
+
+            wishlist.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item.name;
+
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.onclick = function () {
+                    removeFromWishlist(item.name);
+                };
+
+                li.appendChild(removeBtn);
+                wishlistItemsList.appendChild(li);
+            });
+        }
+
+        function addToCart(productName, productPrice) {
+            if (!currentUser) {
+                alert("Please log in to add to cart.");
+                return;
+            }
+            const existingProduct = cart.find(item => item.name === productName);
+            if (existingProduct) {
+                existingProduct.quantity++;
+            } else {
+                cart.push({ name: productName, price: productPrice, quantity: 1 });
+            }
+
+            updateCartButton();
+            renderCart();
+        }
+
+        function addToWishlist(productName, productPrice) {
+            const existingProduct = wishlist.find(item => item.name === productName);
+            if (!existingProduct) {
+                wishlist.push({ name: productName, price: productPrice });
+            }
+
+            updateWishlistButton();
+            renderWishlist();
+        }
+
+        function removeFromWishlist(productName) {
+            wishlist = wishlist.filter(item => item.name !== productName);
+            renderWishlist();
+            alert(`${productName} has been removed from your wishlist.`);
+        }
+
+        function changeItemQuantity(productName, newQuantity) {
+            const product = cart.find(item => item.name === productName);
+            if (product && newQuantity > 0) {
+                product.quantity = newQuantity;
+                renderCart();
+            } else if (newQuantity <= 0) {
+                removeFromCart(productName);
+            }
+        }
+
+        function removeFromCart(productName) {
+            cart = cart.filter(item => item.name !== productName);
+            renderCart();
+        }
+
+        function updateAuthDisplay() {
+            const profileBtn = document.getElementById('profile-btn');
+            const userNameSpan = document.getElementById('user-name');
+            const loginBtn = document.getElementById('login-btn');
+            const signupBtn = document.getElementById('signup-btn');
+
+            if (currentUser) {
+                profileBtn.style.display = 'inline-block';
+                userNameSpan.style.display = 'inline-block';
+                userNameSpan.textContent = `Hello, ${currentUser.username}`;
+                loginBtn.style.display = 'none';
+                signupBtn.style.display = 'none';
+            } else {
+                profileBtn.style.display = 'none';
+                userNameSpan.style.display = 'none';
+                loginBtn.style.display = 'inline-block';
+                signupBtn.style.display = 'inline-block';
+            }
+        }
+
+        function removeFromCart(productName) {
+            cart = cart.filter(item => item.name !== productName);
+            updateCartButton();
+            renderCart();
+            alert(`${productName} has been removed from your cart.`);
+        }
+
+        function removeFromWishlist(productName) {
+            wishlist = wishlist.filter(item => item.name !== productName);
+            updateWishlistButton();
+            renderWishlist();
+            alert(`${productName} has been removed from your wishlist.`);
+        }
+
+        function updateCartButton() {
+            const cartBtn = document.getElementById('cartBtn');
+            cartBtn.textContent = `Cart (${cart.length})`;
+        }
+
+        function updateWishlistButton() {
+            const wishlistBtn = document.getElementById('wishlistBtn');
+            wishlistBtn.textContent = `Wishlist (${wishlist.length})`;
+        }
+
+        function changeItemQuantity(productName, newQuantity) {
+            const product = cart.find(item => item.name === productName);
+            if (product && newQuantity > 0) {
+                product.quantity = newQuantity;
+                renderCart();
+            } else if (newQuantity <= 0) {
+                removeFromCart(productName);
+            }
+        }
+
+    </script>
+
+</body>
+
+</html>
